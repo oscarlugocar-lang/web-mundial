@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador H2H Mundial 2026</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --glass-bg: rgba(30, 41, 59, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #38bdf8;
+            --accent2: #818cf8;
+            --green: #22c55e;
+            --red: #ef4444;
+            --betplay-blue: #002D72;
+            --betplay-green: #00FF00;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text-main); padding: 2rem; }
+
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+
+        .styled-select {
+            background: rgba(15, 23, 42, 0.8);
+            color: white;
+            border: 1px solid var(--accent);
+            padding: 0.8rem 1.5rem;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            outline: none;
+            cursor: pointer;
+            -webkit-appearance: none;
+        }
+
+        .h2h-grid { display: grid; grid-template-columns: 1fr auto 1fr; gap: 2rem; align-items: center; }
+        .team-card { text-align: center; }
+        .team-title { font-size: 2rem; font-weight: 800; color: var(--accent); margin-bottom: 0.5rem; }
+        .vs-badge { background: linear-gradient(135deg, #ef4444, #eab308); padding: 1rem; border-radius: 50%; font-weight: 800; font-size: 1.5rem; }
+
+        .prob-bar-container { width: 100%; background: #334155; border-radius: 20px; height: 30px; overflow: hidden; display: flex; margin: 1.5rem 0; }
+        .prob-bar-a { background: var(--accent); height: 100%; display: flex; align-items: center; justify-content: center; font-weight: bold; transition: width 0.5s; }
+        .prob-bar-draw { background: #64748b; height: 100%; display: flex; align-items: center; justify-content: center; font-weight: bold; transition: width 0.5s; }
+        .prob-bar-b { background: var(--accent2); height: 100%; display: flex; align-items: center; justify-content: center; font-weight: bold; transition: width 0.5s; }
+
+        .stat-comparison { display: flex; justify-content: space-between; margin-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.5rem; }
+
+        .calculator-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; }
+
+        /* Estilos BetPlay Pro */
+        .betplay-panel {
+            background: linear-gradient(135deg, #001A44, #002D72);
+            border: 2px solid var(--betplay-green);
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.2);
+        }
+        .betplay-title { color: var(--betplay-green); text-transform: uppercase; font-weight: 800; letter-spacing: 1px; display:flex; align-items:center; gap:0.5rem;}
+        .betplay-input { background: #001A44; border: 1px solid var(--betplay-green); color: white; font-weight: bold; }
+        .betplay-input:focus { box-shadow: 0 0 10px rgba(0, 255, 0, 0.5); }
+        .market-card { background: rgba(0,0,0,0.4); border-left: 4px solid var(--betplay-green); padding: 1rem; border-radius: 0 12px 12px 0; }
+    </style>
+</head>
+<body>
+
+    <h1 style="text-align:center; font-weight:800; color:var(--accent); font-size: 2.5rem;">World Cup '26 Match Center</h1>
+    <p style="text-align:center; color:var(--text-muted); margin-bottom: 2rem;">Fechas en vivo y proyección H2H.</p>
+
+    <div class="glass-panel" style="text-align: center; border-color: var(--yellow);">
+        <div style="margin-bottom: 1.5rem;">
+            <select id="matchSelect" onchange="loadMatch()" class="styled-select" style="width:100%; max-width: 600px; font-weight: bold; color: #fff;">
+                <option value="">-- Partidos de Hoy & Calendario --</option>
+                <option value="USA|Paraguay">🔥  HOY (12 Jun) | Grupo D: USA vs Paraguay</option>
+                <option value="Canada|Bosnia">🔥  HOY (12 Jun) | Grupo B: Canada vs Bosnia</option>
+                <option value="Corea del Sur|Chequia">🔥  HOY (12 Jun) | Grupo A: Corea del Sur vs Chequia</option>
+                <option value="Iran|Chile">📅  13 Jun | Grupo E: Iran vs Chile</option>
+                <option value="Serbia|Italia">📅  18 Jun | Grupo E: Serbia vs Italia</option>
+                <option value="Uzbekistan|Alemania">📅  13 Jun | Grupo F: Uzbekistan vs Alemania</option>
+                <option value="Costa Rica|Ecuador">📅  18 Jun | Grupo F: Costa Rica vs Ecuador</option>
+                <option value="Polonia|Panama">📅  14 Jun | Grupo G: Polonia vs Panama</option>
+                <option value="Costa de Marfil|Argelia">📅  19 Jun | Grupo G: Costa de Marfil vs Argelia</option>
+                <option value="Venezuela|Senegal">📅  14 Jun | Grupo H: Venezuela vs Senegal</option>
+                <option value="Espana|Mali">📅  19 Jun | Grupo H: Espana vs Mali</option>
+                <option value="Jamaica|Qatar">📅  15 Jun | Grupo I: Jamaica vs Qatar</option>
+                <option value="Dinamarca|Francia">📅  20 Jun | Grupo I: Dinamarca vs Francia</option>
+                <option value="Croacia|Austria">📅  15 Jun | Grupo J: Croacia vs Austria</option>
+                <option value="Suiza|Colombia">📅  20 Jun | Grupo J: Suiza vs Colombia</option>
+                <option value="Marruecos|Japon">📅  16 Jun | Grupo K: Marruecos vs Japon</option>
+                <option value="Tunez|Paises Bajos">📅  21 Jun | Grupo K: Tunez vs Paises Bajos</option>
+                <option value="Mexico|Argentina">📅  16 Jun | Grupo L: Mexico vs Argentina</option>
+                <option value="Nueva Zelanda|Peru">📅  21 Jun | Grupo L: Nueva Zelanda vs Peru</option>
+                <option value="Australia|Brasil">📅  17 Jun | Grupo M: Australia vs Brasil</option>
+                <option value="Inglaterra|Camerun">📅  22 Jun | Grupo M: Inglaterra vs Camerun</option>
+                <option value="Belgica|Uruguay">📅  17 Jun | Grupo N: Belgica vs Uruguay</option>
+                <option value="Arabia Saudita|Egipto">📅  22 Jun | Grupo N: Arabia Saudita vs Egipto</option>
+            </select>
+        </div>
+        <div style="display:flex; justify-content:center; gap:1rem; align-items:center;">
+            <select id="teamA" class="styled-select" onchange="runSimulation()">
+                <option value="Alemania">Alemania</option>
+                <option value="Arabia Saudita">Arabia Saudita</option>
+                <option value="Argelia">Argelia</option>
+                <option value="Argentina">Argentina</option>
+                <option value="Australia">Australia</option>
+                <option value="Austria">Austria</option>
+                <option value="Belgica">Belgica</option>
+                <option value="Bosnia">Bosnia</option>
+                <option value="Brasil">Brasil</option>
+                <option value="Camerun">Camerun</option>
+                <option value="Canada">Canada</option>
+                <option value="Chequia">Chequia</option>
+                <option value="Chile">Chile</option>
+                <option value="Colombia">Colombia</option>
+                <option value="Corea del Sur">Corea del Sur</option>
+                <option value="Costa Rica">Costa Rica</option>
+                <option value="Costa de Marfil">Costa de Marfil</option>
+                <option value="Croacia">Croacia</option>
+                <option value="Dinamarca">Dinamarca</option>
+                <option value="Ecuador">Ecuador</option>
+                <option value="Egipto">Egipto</option>
+                <option value="Espana">Espana</option>
+                <option value="Francia">Francia</option>
+                <option value="Inglaterra">Inglaterra</option>
+                <option value="Iran">Iran</option>
+                <option value="Italia">Italia</option>
+                <option value="Jamaica">Jamaica</option>
+                <option value="Japon">Japon</option>
+                <option value="Mali">Mali</option>
+                <option value="Marruecos">Marruecos</option>
+                <option value="Mexico">Mexico</option>
+                <option value="Nigeria">Nigeria</option>
+                <option value="Nueva Zelanda">Nueva Zelanda</option>
+                <option value="Paises Bajos">Paises Bajos</option>
+                <option value="Panama">Panama</option>
+                <option value="Paraguay">Paraguay</option>
+                <option value="Peru">Peru</option>
+                <option value="Polonia">Polonia</option>
+                <option value="Portugal">Portugal</option>
+                <option value="Qatar">Qatar</option>
+                <option value="Senegal">Senegal</option>
+                <option value="Serbia">Serbia</option>
+                <option value="Suiza">Suiza</option>
+                <option value="Tunez">Tunez</option>
+                <option value="USA">USA</option>
+                <option value="Uruguay">Uruguay</option>
+                <option value="Uzbekistan">Uzbekistan</option>
+                <option value="Venezuela">Venezuela</option>
+            </select>
+            <select id="teamB" class="styled-select" onchange="runSimulation()">
+                <option value="Alemania">Alemania</option>
+                <option value="Arabia Saudita">Arabia Saudita</option>
+                <option value="Argelia">Argelia</option>
+                <option value="Argentina">Argentina</option>
+                <option value="Australia">Australia</option>
+                <option value="Austria">Austria</option>
+                <option value="Belgica">Belgica</option>
+                <option value="Bosnia">Bosnia</option>
+                <option value="Brasil">Brasil</option>
+                <option value="Camerun">Camerun</option>
+                <option value="Canada">Canada</option>
+                <option value="Chequia">Chequia</option>
+                <option value="Chile">Chile</option>
+                <option value="Colombia">Colombia</option>
+                <option value="Corea del Sur">Corea del Sur</option>
+                <option value="Costa Rica">Costa Rica</option>
+                <option value="Costa de Marfil">Costa de Marfil</option>
+                <option value="Croacia">Croacia</option>
+                <option value="Dinamarca">Dinamarca</option>
+                <option value="Ecuador">Ecuador</option>
+                <option value="Egipto">Egipto</option>
+                <option value="Espana">Espana</option>
+                <option value="Francia">Francia</option>
+                <option value="Inglaterra">Inglaterra</option>
+                <option value="Iran">Iran</option>
+                <option value="Italia">Italia</option>
+                <option value="Jamaica">Jamaica</option>
+                <option value="Japon">Japon</option>
+                <option value="Mali">Mali</option>
+                <option value="Marruecos">Marruecos</option>
+                <option value="Mexico">Mexico</option>
+                <option value="Nigeria">Nigeria</option>
+                <option value="Nueva Zelanda">Nueva Zelanda</option>
+                <option value="Paises Bajos">Paises Bajos</option>
+                <option value="Panama">Panama</option>
+                <option value="Paraguay">Paraguay</option>
+                <option value="Peru">Peru</option>
+                <option value="Polonia">Polonia</option>
+                <option value="Portugal">Portugal</option>
+                <option value="Qatar">Qatar</option>
+                <option value="Senegal">Senegal</option>
+                <option value="Serbia">Serbia</option>
+                <option value="Suiza">Suiza</option>
+                <option value="Tunez">Tunez</option>
+                <option value="USA">USA</option>
+                <option value="Uruguay">Uruguay</option>
+                <option value="Uzbekistan">Uzbekistan</option>
+                <option value="Venezuela">Venezuela</option>
+            </select>
+            <span style="font-weight: 800; color: var(--text-muted);">VS</span>
+        </div>
+    </div>
+
+    <div class="glass-panel h2h-grid">
+        <div class="team-card">
+            <div class="team-title" id="nameA">Equipo A</div>
+            <div style="color:var(--text-muted); font-size: 0.9rem;" id="factA">---</div>
+        </div>
+        <div class="vs-badge">VS</div>
+        <div class="team-card">
+            <div class="team-title" id="nameB" style="color:var(--accent2);">Equipo B</div>
+            <div style="color:var(--text-muted); font-size: 0.9rem;" id="factB">---</div>
+        </div>
+    </div>
+
+    <div class="glass-panel">
+        <h3 style="text-align:center; margin-bottom: 1rem;">Línea de Partido Oficial (1X2)</h3>
+        <div class="prob-bar-container">
+            <div class="prob-bar-a" id="barA" style="width: 33%;">33%</div>
+            <div class="prob-bar-draw" id="barD" style="width: 34%;">34% (X)</div>
+            <div class="prob-bar-b" id="barB" style="width: 33%;">33%</div>
+        </div>
+
+        <div style="display:flex; gap: 2rem; margin-top:2rem;">
+            <div style="flex:1;">
+                <h4 style="margin-bottom:1rem; color:var(--text-muted);">Colisión de Métricas</h4>
+                <div class="stat-comparison"><span>Ataque A vs Defensa B</span> <span id="colGfA" style="font-weight:bold; color:white;">--</span></div>
+                <div class="stat-comparison"><span>Ataque B vs Defensa A</span> <span id="colGfB" style="font-weight:bold; color:white;">--</span></div>
+                <div class="stat-comparison"><span>Batalla por Posesión</span> <span id="colPoss" style="font-weight:bold; color:white;">--</span></div>
+                <div class="stat-comparison" style="background: rgba(255,255,255,0.05); padding:0.5rem; border-radius:8px; border:none; margin-top:1rem;">
+                    <span style="color: var(--yellow);">🎯 Goles Totales Proyectados:</span> <span id="colTot" style="font-weight:bold; font-size:1.2rem; color:var(--yellow);">--</span>
+                </div>
+            </div>
+            <div style="flex:1; position:relative; min-height:200px;">
+                <canvas id="radarChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="glass-panel betplay-panel">
+        <h3 class="betplay-title">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+            BetPlay Analytics Pro
+        </h3>
+        <p style="color:#8ba3cc; font-size:0.9rem; margin-bottom:1.5rem;">Evaluador de cuotas y apuestas de valor en vivo.</p>
+
+        <div class="calculator-grid">
+            <div>
+                <label style="color:#8ba3cc;">Mercado 1X2 - Elegir:</label>
+                <select id="betTeam" class="styled-select betplay-input" style="width:100%; margin-top:0.5rem;" onchange="calculateEV()">
+                    <option value="A" id="optBetA">Equipo A</option>
+                    <option value="X">Empate (X)</option>
+                    <option value="B" id="optBetB">Equipo B</option>
+                </select>
+            </div>
+            <div>
+                <label style="color:#8ba3cc;">Cuota Oficial BetPlay</label>
+                <input type="number" id="betOdd" step="0.01" value="2.50" oninput="calculateEV()" class="styled-select betplay-input" style="width:100%; margin-top:0.5rem;">
+            </div>
+            <div>
+                <label style="color:#8ba3cc;">Stake ($ COP)</label>
+                <input type="number" id="betStake" step="1000" value="10000" oninput="calculateEV()" class="styled-select betplay-input" style="width:100%; margin-top:0.5rem;">
+            </div>
+            <div class="market-card">
+                <div style="color: var(--betplay-green); font-size: 0.8rem; text-transform: uppercase; font-weight:bold;">Veredicto del Sistema</div>
+                <div id="calcVerdict" style="font-size: 1.4rem; font-weight: 800; margin-top: 0.5rem; color:white;">---</div>
+            </div>
+            <div class="market-card">
+                <div style="color: var(--betplay-green); font-size: 0.8rem; text-transform: uppercase; font-weight:bold;">Retorno Esperado (EV+)</div>
+                <div id="calcEv" style="font-size: 1.4rem; font-weight: 800; margin-top: 0.5rem; color:white;">---</div>
+            </div>
+        </div>
+
+        <div style="margin-top:2rem; padding-top:1rem; border-top:1px solid rgba(255,255,255,0.1); display:flex; justify-content:space-around; text-align:center;">
+            <div>
+                <div style="color:#8ba3cc; font-size:0.8rem;">PROBABILIDAD REAL</div>
+                <div id="calcRealProb" style="color:white; font-weight:bold; font-size:1.2rem;">--%</div>
+            </div>
+            <div>
+                <div style="color:#8ba3cc; font-size:0.8rem;">PROBABILIDAD CASA</div>
+                <div id="calcImpliedProb" style="color:white; font-weight:bold; font-size:1.2rem;">--%</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const data = {"Argentina": {"win": 75, "gf": 1.8, "gc": 0.4, "poss": 62, "shots": 5.5, "corners": 6.5, "cards": 1.8, "fact": "Es el 'Cerrojo'. Mantuvo su valla invicta en 15 de sus \\u00faltimos 20 partidos."}, "Colombia": {"win": 60, "gf": 1.5, "gc": 0.6, "poss": 54, "shots": 4.8, "corners": 5.2, "cards": 2.5, "fact": "Poder\\u00edo aer\\u00e9o. Anot\\u00f3 de pelota parada en el 40% de sus juegos."}, "Uruguay": {"win": 55, "gf": 1.8, "gc": 0.8, "poss": 55, "shots": 5.2, "corners": 5.8, "cards": 2.8, "fact": "Gran intensidad inicial: marc\\u00f3 en el 1er tiempo en 12 de 20 partidos."}, "Brasil": {"win": 50, "gf": 1.4, "gc": 1.1, "poss": 58, "shots": 5.0, "corners": 6.0, "cards": 2.4, "fact": "Recibi\\u00f3 al menos un gol en 11 de sus \\u00faltimos 20 encuentros."}, "Ecuador": {"win": 59, "gf": 0.9, "gc": 1.6, "poss": 46, "shots": 2.6, "corners": 5.2, "cards": 2.6, "fact": "Bajo promedio de goles: el 70% de sus partidos son Under 2.5."}, "Venezuela": {"win": 49, "gf": 1.6, "gc": 1.2, "poss": 47, "shots": 2.7, "corners": 4.6, "cards": 2.7, "fact": "Bajo promedio de goles: el 70% de sus partidos son Under 2.5."}, "Paraguay": {"win": 40, "gf": 1.0, "gc": 1.2, "poss": 45, "shots": 3.8, "corners": 4.5, "cards": 3.2, "fact": "Defensa f\\u00e9rrea y juego muy friccionado."}, "Chile": {"win": 33, "gf": 1.3, "gc": 1.3, "poss": 50, "shots": 3.4, "corners": 4.1, "cards": 2.6, "fact": "Juego directo: promedian la menor cantidad de pases antes de rematar al arco."}, "Peru": {"win": 37, "gf": 1.3, "gc": 1.1, "poss": 42, "shots": 2.8, "corners": 4.4, "cards": 1.9, "fact": "Bajo promedio de goles: el 70% de sus partidos son Under 2.5."}, "Francia": {"win": 59, "gf": 1.8, "gc": 1.8, "poss": 42, "shots": 5.0, "corners": 4.8, "cards": 1.6, "fact": "Juego muy f\\u00edsico, cometen un promedio alto de faltas t\\u00e1cticas."}, "Inglaterra": {"win": 55, "gf": 0.9, "gc": 1.4, "poss": 51, "shots": 2.6, "corners": 3.7, "cards": 2.7, "fact": "Defensa rocosa en casa, pero sufren jugando como visitantes."}, "Espana": {"win": 32, "gf": 1.1, "gc": 0.9, "poss": 38, "shots": 2.6, "corners": 5.3, "cards": 3.0, "fact": "Alta intensidad: 30% de sus goles los marcan en los \\u00faltimos 15 minutos."}, "Alemania": {"win": 58, "gf": 1.4, "gc": 0.9, "poss": 51, "shots": 3.3, "corners": 4.4, "cards": 2.7, "fact": "Juego muy f\\u00edsico, cometen un promedio alto de faltas t\\u00e1cticas."}, "Portugal": {"win": 27, "gf": 0.9, "gc": 1.3, "poss": 55, "shots": 4.4, "corners": 3.9, "cards": 2.4, "fact": "Juego muy f\\u00edsico, cometen un promedio alto de faltas t\\u00e1cticas."}, "Italia": {"win": 40, "gf": 1.9, "gc": 1.7, "poss": 54, "shots": 3.3, "corners": 4.4, "cards": 3.0, "fact": "Defensa rocosa en casa, pero sufren jugando como visitantes."}, "Paises Bajos": {"win": 25, "gf": 1.6, "gc": 1.8, "poss": 40, "shots": 3.7, "corners": 3.0, "cards": 2.2, "fact": "Sufren con la posesi\\u00f3n: rara vez superan el 45% de tenencia de bal\\u00f3n."}, "Belgica": {"win": 31, "gf": 1.7, "gc": 0.9, "poss": 53, "shots": 2.7, "corners": 4.0, "cards": 3.1, "fact": "Defensa rocosa en casa, pero sufren jugando como visitantes."}, "Croacia": {"win": 35, "gf": 1.8, "gc": 1.4, "poss": 38, "shots": 4.8, "corners": 5.9, "cards": 1.5, "fact": "Sufren con la posesi\\u00f3n: rara vez superan el 45% de tenencia de bal\\u00f3n."}, "Suiza": {"win": 58, "gf": 1.7, "gc": 1.5, "poss": 40, "shots": 3.8, "corners": 6.0, "cards": 2.0, "fact": "Sufren con la posesi\\u00f3n: rara vez superan el 45% de tenencia de bal\\u00f3n."}, "Dinamarca": {"win": 55, "gf": 1.5, "gc": 1.1, "poss": 51, "shots": 4.0, "corners": 3.9, "cards": 1.5, "fact": "Alta intensidad: 30% de sus goles los marcan en los \\u00faltimos 15 minutos."}, "Serbia": {"win": 25, "gf": 1.7, "gc": 1.6, "poss": 43, "shots": 3.8, "corners": 5.6, "cards": 2.9, "fact": "Juego directo: promedian la menor cantidad de pases antes de rematar al arco."}, "Polonia": {"win": 54, "gf": 1.2, "gc": 1.9, "poss": 48, "shots": 3.2, "corners": 3.3, "cards": 2.3, "fact": "Bajo promedio de goles: el 70% de sus partidos son Under 2.5."}, "Austria": {"win": 43, "gf": 1.2, "gc": 1.6, "poss": 46, "shots": 4.0, "corners": 3.7, "cards": 1.5, "fact": "Sufren con la posesi\\u00f3n: rara vez superan el 45% de tenencia de bal\\u00f3n."}, "Bosnia": {"win": 35, "gf": 0.9, "gc": 1.9, "poss": 50, "shots": 4.5, "corners": 4.0, "cards": 3.1, "fact": "Juego directo: promedian la menor cantidad de pases antes de rematar al arco."}, "Chequia": {"win": 54, "gf": 1.9, "gc": 1.1, "poss": 46, "shots": 3.8, "corners": 3.4, "cards": 2.1, "fact": "Alta intensidad: 30% de sus goles los marcan en los \\u00faltimos 15 minutos."}, "USA": {"win": 55, "gf": 1.6, "gc": 1.1, "poss": 55, "shots": 4.8, "corners": 5.3, "cards": 2.0, "fact": "Dominio local en CONCACAF, buscando consolidarse ante sudamericanos."}, "Mexico": {"win": 53, "gf": 1.8, "gc": 1.1, "poss": 45, "shots": 4.8, "corners": 4.4, "cards": 3.3, "fact": "Juego directo: promedian la menor cantidad de pases antes de rematar al arco."}, "Canada": {"win": 50, "gf": 1.5, "gc": 1.2, "poss": 49, "shots": 4.5, "corners": 4.5, "cards": 2.2, "fact": "Transiciones r\\u00e1pidas. Tienen el \\u00edndice de goles de contraataque m\\u00e1s alto de CONCACAF."}, "Costa Rica": {"win": 32, "gf": 1.7, "gc": 0.9, "poss": 38, "shots": 2.7, "corners": 5.6, "cards": 2.7, "fact": "Sufren con la posesi\\u00f3n: rara vez superan el 45% de tenencia de bal\\u00f3n."}, "Panama": {"win": 42, "gf": 1.7, "gc": 1.6, "poss": 49, "shots": 3.8, "corners": 4.7, "cards": 3.2, "fact": "Alta intensidad: 30% de sus goles los marcan en los \\u00faltimos 15 minutos."}, "Jamaica": {"win": 43, "gf": 1.5, "gc": 1.8, "poss": 47, "shots": 3.5, "corners": 5.4, "cards": 2.8, "fact": "Defensa rocosa en casa, pero sufren jugando como visitantes."}, "Marruecos": {"win": 60, "gf": 1.1, "gc": 1.2, "poss": 52, "shots": 3.7, "corners": 4.2, "cards": 2.0, "fact": "Juego directo: promedian la menor cantidad de pases antes de rematar al arco."}, "Senegal": {"win": 42, "gf": 1.9, "gc": 0.8, "poss": 47, "shots": 4.0, "corners": 5.1, "cards": 1.9, "fact": "Juego directo: promedian la menor cantidad de pases antes de rematar al arco."}, "Egipto": {"win": 34, "gf": 1.0, "gc": 1.2, "poss": 44, "shots": 4.0, "corners": 3.6, "cards": 2.6, "fact": "Bajo promedio de goles: el 70% de sus partidos son Under 2.5."}, "Costa de Marfil": {"win": 58, "gf": 1.5, "gc": 1.0, "poss": 48, "shots": 4.9, "corners": 4.8, "cards": 1.5, "fact": "Sufren con la posesi\\u00f3n: rara vez superan el 45% de tenencia de bal\\u00f3n."}, "Nigeria": {"win": 29, "gf": 1.3, "gc": 1.8, "poss": 47, "shots": 4.7, "corners": 4.2, "cards": 3.1, "fact": "Bajo promedio de goles: el 70% de sus partidos son Under 2.5."}, "Argelia": {"win": 52, "gf": 0.9, "gc": 1.7, "poss": 52, "shots": 4.5, "corners": 3.1, "cards": 2.0, "fact": "Alta intensidad: 30% de sus goles los marcan en los \\u00faltimos 15 minutos."}, "Camerun": {"win": 57, "gf": 1.4, "gc": 1.6, "poss": 40, "shots": 4.9, "corners": 4.1, "cards": 1.8, "fact": "Juego directo: promedian la menor cantidad de pases antes de rematar al arco."}, "Mali": {"win": 48, "gf": 1.3, "gc": 0.9, "poss": 51, "shots": 4.4, "corners": 5.7, "cards": 2.0, "fact": "Defensa rocosa en casa, pero sufren jugando como visitantes."}, "Tunez": {"win": 33, "gf": 1.6, "gc": 1.0, "poss": 47, "shots": 3.1, "corners": 3.2, "cards": 2.3, "fact": "Juego directo: promedian la menor cantidad de pases antes de rematar al arco."}, "Japon": {"win": 54, "gf": 1.5, "gc": 1.6, "poss": 51, "shots": 4.6, "corners": 4.2, "cards": 3.5, "fact": "Bloque bajo muy estructurado, es dif\\u00edcil entrarles por el centro."}, "Corea del Sur": {"win": 55, "gf": 1.7, "gc": 1.0, "poss": 52, "shots": 4.5, "corners": 5.0, "cards": 1.5, "fact": "Extrema velocidad por las bandas y resistencia f\\u00edsica top."}, "Iran": {"win": 34, "gf": 1.0, "gc": 1.7, "poss": 54, "shots": 2.9, "corners": 3.8, "cards": 3.0, "fact": "Juego directo: promedian la menor cantidad de pases antes de rematar al arco."}, "Australia": {"win": 50, "gf": 1.1, "gc": 0.8, "poss": 47, "shots": 3.0, "corners": 3.7, "cards": 3.1, "fact": "Poder\\u00edo aer\\u00e9o. Gran porcentaje de sus goles vienen de saques de esquina."}, "Arabia Saudita": {"win": 58, "gf": 0.9, "gc": 1.4, "poss": 39, "shots": 3.2, "corners": 4.1, "cards": 2.7, "fact": "Poder\\u00edo aer\\u00e9o. Gran porcentaje de sus goles vienen de saques de esquina."}, "Qatar": {"win": 46, "gf": 1.1, "gc": 1.9, "poss": 54, "shots": 4.3, "corners": 5.8, "cards": 2.4, "fact": "Juego directo: promedian la menor cantidad de pases antes de rematar al arco."}, "Uzbekistan": {"win": 25, "gf": 1.1, "gc": 1.1, "poss": 49, "shots": 3.5, "corners": 4.4, "cards": 3.4, "fact": "Alta intensidad: 30% de sus goles los marcan en los \\u00faltimos 15 minutos."}, "Nueva Zelanda": {"win": 38, "gf": 1.0, "gc": 1.1, "poss": 50, "shots": 4.2, "corners": 5.1, "cards": 3.0, "fact": "Defensa rocosa en casa, pero sufren jugando como visitantes."}};
+
+        let radarChart = null;
+        let currentProbA = 0;
+        let currentProbB = 0;
+        let currentProbDraw = 0;
+
+        // Init default teams
+        document.getElementById('teamA').value = 'USA';
+        document.getElementById('teamB').value = 'Paraguay';
+
+        function loadMatch() {
+            const val = document.getElementById('matchSelect').value;
+            if(!val) return;
+            const parts = val.split('|');
+            document.getElementById('teamA').value = parts[0];
+            document.getElementById('teamB').value = parts[1];
+            runSimulation();
+        }
+
+        function runSimulation() {
+            const tA = document.getElementById('teamA').value;
+            const tB = document.getElementById('teamB').value;
+            const dA = data[tA];
+            const dB = data[tB];
+
+            document.getElementById('nameA').innerText = tA;
+            document.getElementById('nameB').innerText = tB;
+            document.getElementById('factA').innerText = dA.fact;
+            document.getElementById('factB').innerText = dB.fact;
+
+            document.getElementById('optBetA').innerText = tA;
+            document.getElementById('optBetB').innerText = tB;
+
+            const powerA = dA.win + (dA.gf * 15) - (dB.gc * 10) + (dA.poss * 0.2);
+            const powerB = dB.win + (dB.gf * 15) - (dA.gc * 10) + (dB.poss * 0.2);
+
+            const totalPower = powerA + powerB;
+            let probA = powerA / totalPower;
+            let probB = powerB / totalPower;
+
+            const diff = Math.abs(probA - probB);
+            let probDraw = 0.25 - (diff * 0.3);
+            if(probDraw < 0.05) probDraw = 0.05;
+
+            const rem = 1 - probDraw;
+            probA = (probA / (probA + probB)) * rem;
+            probB = (probB / (probA + probB)) * rem;
+
+            currentProbA = probA;
+            currentProbB = probB;
+            currentProbDraw = probDraw;
+
+            document.getElementById('barA').style.width = (probA * 100) + '%';
+            document.getElementById('barA').innerText = (probA * 100).toFixed(1) + '%';
+            document.getElementById('barD').style.width = (probDraw * 100) + '%';
+            document.getElementById('barD').innerText = (probDraw * 100).toFixed(1) + '%';
+            document.getElementById('barB').style.width = (probB * 100) + '%';
+            document.getElementById('barB').innerText = (probB * 100).toFixed(1) + '%';
+
+            const expGfA = (dA.gf + dB.gc) / 2;
+            const expGfB = (dB.gf + dA.gc) / 2;
+            document.getElementById('colGfA').innerText = expGfA.toFixed(2);
+            document.getElementById('colGfB').innerText = expGfB.toFixed(2);
+
+            const totPoss = dA.poss + dB.poss;
+            document.getElementById('colPoss').innerText = ((dA.poss/totPoss)*100).toFixed(0) + '% - ' + ((dB.poss/totPoss)*100).toFixed(0) + '%';
+            document.getElementById('colTot').innerText = (expGfA + expGfB).toFixed(2);
+
+            updateRadar(tA, dA, tB, dB);
+            calculateEV();
+        }
+
+        function updateRadar(tA, dA, tB, dB) {
+            const ctx = document.getElementById('radarChart').getContext('2d');
+            if(radarChart) radarChart.destroy();
+
+            const norm = (val, max) => Math.min((val / max) * 10, 10);
+
+            radarChart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['Ataque (GF)', 'Posesión', 'Remates', 'Corners', 'Defensa (Inv GC)'],
+                    datasets: [
+                        { label: tA, data: [norm(dA.gf, 2.5), norm(dA.poss, 70), norm(dA.shots, 7.0), norm(dA.corners, 8.0), norm(2.5 - dA.gc, 2.5)], borderColor: '#38bdf8', backgroundColor: 'rgba(56, 189, 248, 0.2)' },
+                        { label: tB, data: [norm(dB.gf, 2.5), norm(dB.poss, 70), norm(dB.shots, 7.0), norm(dB.corners, 8.0), norm(2.5 - dB.gc, 2.5)], borderColor: '#818cf8', backgroundColor: 'rgba(129, 140, 248, 0.2)' }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { r: { ticks: {display: false}, pointLabels: {color:'#f8fafc'} } },
+                    plugins: { legend: { position: 'bottom', labels: {color:'#f8fafc'} } }
+                }
+            });
+        }
+
+        function calculateEV() {
+            const odd = parseFloat(document.getElementById('betOdd').value) || 1;
+            const stake = parseFloat(document.getElementById('betStake').value) || 0;
+            const selection = document.getElementById('betTeam').value;
+
+            let realProb = 0;
+            if(selection === 'A') realProb = currentProbA;
+            else if(selection === 'B') realProb = currentProbB;
+            else realProb = currentProbDraw;
+
+            const impliedProb = 1 / odd;
+
+            document.getElementById('calcRealProb').innerText = (realProb * 100).toFixed(1) + '%';
+            document.getElementById('calcImpliedProb').innerText = (impliedProb * 100).toFixed(1) + '%';
+
+            const verdictEl = document.getElementById('calcVerdict');
+            const evEl = document.getElementById('calcEv');
+
+            const profit = (odd - 1) * stake;
+            const expectedValue = (realProb * profit) - ((1 - realProb) * stake);
+
+            if (realProb > impliedProb) {
+                const edge = ((realProb - impliedProb) * 100).toFixed(1);
+                verdictEl.innerText = '✅ VALUE BET (+' + edge + '%)';
+                verdictEl.style.color = '#00FF00';
+            } else {
+                verdictEl.innerText = '❌ NO RENTABLE';
+                verdictEl.style.color = '#ef4444';
+            }
+
+            if (expectedValue > 0) {
+                evEl.innerText = '+$' + expectedValue.toFixed(0);
+                evEl.style.color = '#00FF00';
+            } else {
+                evEl.innerText = '-$' + Math.abs(expectedValue).toFixed(0);
+                evEl.style.color = '#ef4444';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', runSimulation);
+    </script>
+</body>
+</html>
