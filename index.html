@@ -135,9 +135,18 @@ function prob(a,b){
   return{pA:+(prA*100).toFixed(0),pD:+(prD*100).toFixed(0),pB:+(prB*100).toFixed(0)};
 }
 
+// ═══ GOAL ESTIMATE ═══
+let _agf,_agc;
+function goalEst(a,b){
+  const dA=STATS[a],dB=STATS[b];
+  if(!dA||!dB)return{gA:1,gB:1};
+  if(!_agf){const v=Object.values(STATS);_agf=v.reduce((s,t)=>s+t.gf,0)/v.length;_agc=v.reduce((s,t)=>s+t.gc,0)/v.length;}
+  return{gA:+(dA.gf*dB.gc/_agc).toFixed(1),gB:+(dB.gf*dA.gc/_agf).toFixed(1)};
+}
+
 // ═══ RESULTS ═══
 function getR(){try{return JSON.parse(localStorage.getItem('wc_results'))||{}}catch(e){return{}}}
-function setR(i,v){const r=getR();r[i]=v;localStorage.setItem('wc_results',JSON.stringify(r));renderWC();}
+function setR(i,v){const r=getR();if(r[i]===v)delete r[i];else r[i]=v;localStorage.setItem('wc_results',JSON.stringify(r));renderWC();}
 
 // ═══ STANDINGS ═══
 function standings(g){
@@ -187,28 +196,19 @@ function renderWC(){
     byDate[date].forEach(m=>{
       const res=r[m.idx],s=prob(m.a,m.b);
       const fA=FLAGS[m.a]||'',fB=FLAGS[m.b]||'';
-      const cls=(isToday?' today':'')+(res?' done':'');
+      const cls=isToday?' today':'';
       html+='<div class="match-card'+cls+'">';
       html+='<span class="group-badge">'+m.g+'</span>';
       html+='<div class="team'+(res==='A'?' win':'')+'" style="text-align:right">'+fA+' '+m.a+'</div>';
 
-      if(!res){
-        html+='<div class="score-btns">';
-        html+='<button onclick="setR('+m.idx+',\'A\')" title="'+m.a+'">'+s.pA+'%</button>';
-        html+='<button onclick="setR('+m.idx+',\'X\')" title="Empate">X</button>';
-        html+='<button onclick="setR('+m.idx+',\'B\')" title="'+m.b+'">'+s.pB+'%</button>';
-        html+='</div>';
-      } else {
-        let label='',sel='';
-        if(res==='A'){label='1';sel='sel1';}
-        else if(res==='X'){label='X';sel='selX';}
-        else{label='2';sel='sel2';}
-        html+='<div class="score-btns"><button class="'+sel+'">'+label+'</button></div>';
-      }
+      const goal=goalEst(m.a,m.b);
+      html+='<div class="score-btns">';
+      html+='<button class="'+(res==='A'?'sel1':'')+'" onclick="setR('+m.idx+',\'A\')">'+(res==='A'?'✅ ':'')+'1<br><small>'+s.pA+'% ⚽'+goal.gA+'</small></button>';
+      html+='<button class="'+(res==='X'?'selX':'')+'" onclick="setR('+m.idx+',\'X\')">'+(res==='X'?'✅ ':'')+'X<br><small>'+s.pD+'%</small></button>';
+      html+='<button class="'+(res==='B'?'sel2':'')+'" onclick="setR('+m.idx+',\'B\')">'+(res==='B'?'✅ ':'')+'2<br><small>'+s.pB+'% ⚽'+goal.gB+'</small></button>';
+      html+='</div>';
 
       html+='<div class="team'+(res==='B'?' win':'')+'" style="text-align:left">'+m.b+' '+fB+'</div>';
-      if(!res)html+='<span style="font-size:10px;color:var(--text2);text-align:center">'+s.pA+'/'+s.pD+'/'+s.pB+'</span>';
-      else html+='<span style="font-size:10px;color:var(--text2);text-align:center">✅</span>';
       html+='</div>';
     });
   });
