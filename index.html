@@ -93,6 +93,26 @@ header p{color:var(--text2);font-size:13px;margin-top:2px}
 const API = 'https://wcup2026.org/api/data.php';
 let allMatches = [], standings = {}, activeTab = 'matches', filterGroup = '';
 const userResults = JSON.parse(localStorage.getItem('wc_results') || '{}');
+const COL_OFFSET = -5; // Colombia UTC-5
+
+function colDateStr(utcTs){
+  const d = new Date(utcTs * 1000);
+  const local = new Date(d.getTime() + (d.getTimezoneOffset() + COL_OFFSET * 60) * 60000);
+  const y = local.getFullYear();
+  const m = String(local.getMonth() + 1).padStart(2, '0');
+  const day = String(local.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function colTimeStr(utcTs){
+  const d = new Date(utcTs * 1000);
+  return d.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Bogota' });
+}
+
+function colToday(){
+  const d = new Date();
+  return d.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }); // en-CA gives YYYY-MM-DD
+}
 
 async function loadData(){
   try{
@@ -163,13 +183,15 @@ function renderFilters(){
 
 function renderMatches(){
   renderFilters();
-  const today = new Date().toISOString().slice(0,10);
+  const today = colToday();
   const byDate = {};
   allMatches.forEach(m => {
     if(filterGroup && m.group !== filterGroup) return;
     if(!filterGroup && !m.group.startsWith('Group')) return;
-    if(!byDate[m.date]) byDate[m.date] = [];
-    byDate[m.date].push(m);
+    if(!m.datetime) return;
+    const d = colDateStr(m.datetime);
+    if(!byDate[d]) byDate[d] = [];
+    byDate[d].push(m);
   });
   const dates = Object.keys(byDate).sort();
   let html = '<div class="match-list">';
@@ -191,7 +213,8 @@ function renderMatches(){
       let sel1='', selX='', sel2='';
       if(ur === m.team1) sel1='sel1'; else if(ur === 'X') selX='selX'; else if(ur === m.team2) sel2='sel2';
 
-      html += '<div class="match-card'+(live?' live':'')+'">';
+      const colT = colTimeStr(m.datetime);
+      html += '<div class="match-card'+(live?' live':'')+'" title="'+m.ground+'">';
       html += '<span class="group-badge">'+m.group.replace('Group ','')+'</span>';
       html += '<div class="team'+(finished&&m.score&&m.score[0]>m.score[1]?' win':'')+'" style="text-align:right"><span class="team-name" style="justify-content:flex-end"><span>'+m.team1+'</span><img class="flag-img" src="'+m.flag1+'" alt="" loading="lazy"></span></div>';
       html += '<div class="score-area">';
@@ -200,10 +223,10 @@ function renderMatches(){
         html += '<span class="status-badge live">🔴 '+(m.live_minute||'')+'\'</span>';
       } else if(finished){
         html += '<div class="score">'+scoreDisplay+'</div>';
-        html += '<span class="status-badge finished">Finalizado</span>';
+        html += '<span class="status-badge finished">'+colT+'</span>';
       } else {
         html += '<div class="score" style="color:var(--orange)">'+scoreDisplay+'</div>';
-        html += '<div style="font-size:9px;color:var(--orange);margin-top:-2px">pronóstico</div>';
+        html += '<div style="font-size:9px;color:var(--orange);margin-top:-2px">'+colT+' · pronóstico</div>';
         html += '<div class="pred-bar"><span style="width:'+pred.pA+'%;background:var(--accent);height:4px"></span><span style="width:'+pred.pX+'%;background:var(--orange);height:4px"></span><span style="width:'+pred.pB+'%;background:var(--accent2);height:4px"></span></div>';
         html += '<div class="score-btns">';
         html += '<button class="'+sel1+'" onclick="setResult('+m.id+',\''+m.team1+'\')">1 <small>'+pred.pA+'%</small></button>';
@@ -221,16 +244,16 @@ function renderMatches(){
 }
 
 function renderPredictions(){
-  const today = new Date().toISOString().slice(0,10);
-  const upcoming = allMatches.filter(m => (m.status === 'scheduled' || m.status === 'upcoming') && m.group.startsWith('Group'));
+  const upcoming = allMatches.filter(m => (m.status === 'scheduled' || m.status === 'upcoming') && m.group.startsWith('Group') && m.datetime);
   const byDate = {};
   upcoming.forEach(m => {
-    if(!byDate[m.date]) byDate[m.date] = [];
-    byDate[m.date].push(m);
+    const d = colDateStr(m.datetime);
+    if(!byDate[d]) byDate[d] = [];
+    byDate[d].push(m);
   });
   const dates = Object.keys(byDate).sort();
-  let html = '<h2 style="font-size:16px;font-weight:700;margin:4px 0 10px;text-align:center;color:var(--orange)">🔮 Pronósticos por Fecha</h2>';
-  html += '<div style="text-align:center;font-size:12px;color:var(--text2);margin-bottom:12px">Basado en rendimiento histórico y puntos en la tabla. Los porcentajes se actualizan en vivo.</div>';
+  let html = '<h2 style="font-size:16px;font-weight:700;margin:4px 0 10px;text-align:center;color:var(--orange)">🔮 Pronósticos por Fecha (hora Colombia)</h2>';
+  html += '<div style="text-align:center;font-size:12px;color:var(--text2);margin-bottom:12px">Basado en rendimiento histórico y puntos en la tabla.</div>';
   html += '<div class="match-list">';
   dates.forEach(date => {
     html += '<div class="date-header" style="color:var(--orange)"><span>📅 '+date+'</span><span>'+byDate[date].length+' partidos</span></div>';
@@ -238,11 +261,13 @@ function renderPredictions(){
       const p = predict(m);
       const winner = p.pA > p.pB && p.pA > p.pX ? m.team1 : p.pB > p.pA && p.pB > p.pX ? m.team2 : 'Empate';
       const conf = Math.max(p.pA, p.pB, p.pX);
-      html += '<div class="match-card">';
+      const colT = colTimeStr(m.datetime);
+      html += '<div class="match-card" title="'+m.ground+'">';
       html += '<span class="group-badge">'+m.group.replace('Group ','')+'</span>';
       html += '<div class="team" style="text-align:right"><span class="team-name" style="justify-content:flex-end"><span>'+m.team1+'</span><img class="flag-img" src="'+m.flag1+'" alt="" loading="lazy"></span></div>';
       html += '<div class="score-area">';
       html += '<div style="font-size:18px;font-weight:800;color:var(--orange)">'+p.gA+' - '+p.gB+'</div>';
+      html += '<div style="font-size:9px;color:var(--text2)">'+colT+'</div>';
       html += '<div class="pred-bar"><span style="width:'+p.pA+'%;background:var(--accent)"></span><span style="width:'+p.pX+'%;background:var(--orange)"></span><span style="width:'+p.pB+'%;background:var(--accent2)"></span></div>';
       html += '<div style="font-size:10px;color:var(--green);font-weight:700">⬆ '+winner+' ('+conf+'%)</div>';
       html += '</div>';
