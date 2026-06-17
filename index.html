@@ -130,28 +130,46 @@ async function loadData(){
   }
 }
 
-function getTeamPoints(team, group){
+const POWER = {
+  "Argentina":96,"France":95,"Brazil":93,"Germany":92,"Spain":91,"England":90,
+  "Portugal":88,"Netherlands":87,"Belgium":86,"Croatia":84,"Italy":82,"Uruguay":81,"Colombia":80,
+  "Mexico":78,"USA":76,"Japan":75,"Morocco":74,"Switzerland":73,"Senegal":72,"Denmark":72,
+  "Serbia":71,"Poland":70,"Sweden":70,"Austria":69,"Ukraine":68,"Norway":68,"Korea":67,"Iran":66,
+  "Saudi Arabia":65,"Australia":64,"Canada":63,"Ecuador":62,"Costa Rica":61,"Ghana":60,
+  "Cameroon":59,"Mali":58,"Tunisia":57,"Algeria":56,"Ivory Coast":55,"Nigeria":54,"Egypt":53,
+  "Panama":50,"Qatar":48,"Jamaica":47,"South Africa":46,"Congo DR":45,"Haiti":44,"Curaçao":43,
+  "Cape Verde":42,"Jordan":41,"Iraq":40,"Uzbekistan":39,"New Zealand":38,"Bosnia":37,
+  "Paraguay":72,"Chile":70,"Peru":68,"Venezuela":65,"Czech Republic":69,"Scotland":68,
+  "Turkey":67,"Austria":70,"South Korea":67,"Czechia":68
+};
+
+function getPower(team){
+  const k = Object.keys(POWER).find(p => team.includes(p) || p.includes(team));
+  return k ? POWER[k] : 55;
+}
+
+function getTeamStats(team, group){
   const gs = standings[group] || [];
   const t = gs.find(s => s.team === team);
   return t ? { pts: t.pts, gf: t.gf, ga: t.ga, gd: t.gd, p: t.p } : { pts: 0, gf: 0, ga: 0, gd: 0, p: 0 };
 }
 
 function predict(m){
-  const ta = getTeamPoints(m.team1, m.group), tb = getTeamPoints(m.team2, m.group);
-  const strengthA = ta.pts + ta.gd * 0.5 + 1, strengthB = tb.pts + tb.gd * 0.5 + 1;
+  const stA = getTeamStats(m.team1, m.group), stB = getTeamStats(m.team2, m.group);
+  const baseA = getPower(m.team1), baseB = getPower(m.team2);
+  const perfA = stA.p > 0 ? (stA.pts / (stA.p * 3)) * 20 : 0;
+  const perfB = stB.p > 0 ? (stB.pts / (stB.p * 3)) * 20 : 0;
+  const strengthA = baseA + perfA, strengthB = baseB + perfB;
   const total = strengthA + strengthB;
   const rawA = strengthA / total, rawB = strengthB / total;
-  const drawFactor = 0.22 + Math.abs(rawA - rawB) * 0.15;
-  const pA = Math.round((rawA * (1 - drawFactor)) * 100);
-  const pB = Math.round((rawB * (1 - drawFactor)) * 100);
-  const pX = Math.max(0, 100 - pA - pB);
-  const avgGF = ta.p > 0 ? ta.gf / ta.p : 0.5;
-  const avgGA = tb.p > 0 ? tb.ga / tb.p : 0.5;
-  const avgGFb = tb.p > 0 ? tb.gf / tb.p : 0.5;
-  const avgGAa = ta.p > 0 ? ta.ga / ta.p : 0.5;
-  const gA = Math.max(0, Math.round((avgGF + avgGA * 0.5 + strengthA / total * 1.5) * 10) / 10);
-  const gB = Math.max(0, Math.round((avgGFb + avgGAa * 0.5 + strengthB / total * 1.5) * 10) / 10);
-  return { pA, pX, pB, gA: Math.round(gA), gB: Math.round(gB) };
+  const drawFactor = 0.20 + Math.abs(rawA - rawB) * 0.12;
+  const pA = Math.round(Math.max(5, Math.min(85, (rawA * (1 - drawFactor)) * 100)));
+  const pB = Math.round(Math.max(5, Math.min(85, (rawB * (1 - drawFactor)) * 100)));
+  const pX = Math.max(3, 100 - pA - pB);
+  const avgG = 2.4;
+  const gA = Math.max(0, Math.round((strengthA / total) * avgG * (1 + (rawA - 0.5) * 0.6) * 2));
+  const gB = Math.max(0, Math.round((strengthB / total) * avgG * (1 + (rawB - 0.5) * 0.6) * 2));
+  return { pA, pX, pB, gA, gB };
 }
 
 function render(){
