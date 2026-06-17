@@ -109,6 +109,9 @@ header p{color:var(--text2);font-size:13px;margin-top:2px}
   <button onclick="exportData()">⬇ Exportar</button>
   <button class="danger" onclick="if(confirm('¿Borrar resultados manuales?')){localStorage.removeItem('wc_results');render()}">🗑 Reset</button>
 </div>
+<div style="text-align:center;font-size:10px;color:var(--text2);margin-top:16px;padding:8px;border-top:1px solid var(--border)">
+⚠️ Solo con fines educativos · Las cuotas incluyen margen estimado del 6% · No garantizamos exactitud · No apostes con dinero real basado en estos datos
+</div>
 </div>
 
 <div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
@@ -166,7 +169,11 @@ function predict(m){
   return{pA:ppA,pX:ppX,pB:ppB,gA,gB,exA:Math.round(exA*10)/10,exB:Math.round(exB*10)/10,strA:Math.round(stA),strB:Math.round(stB),attA:Math.round(aA*10)/10,attB:Math.round(aB*10)/10,defA:Math.round(dA*10)/10,defB:Math.round(dB*10)/10};
 }
 
-function cuota(p){return p>0?(100/p).toFixed(2):'-';}
+function cuota(p, margin){
+  const m=margin||0.06; // overround 6%
+  const book=p*(1+m);
+  return book>0?(100/book).toFixed(2):'-';
+}
 
 function render(){if(activeTab==='matches')renderMatches();else if(activeTab==='predictions')renderPredictions();else if(activeTab==='standings')renderStandings();else renderTeamStats();}
 
@@ -198,12 +205,18 @@ function openModal(id){
   }else{
     h+='<div style="text-align:center;font-size:28px;font-weight:800;color:var(--orange);margin:8px 0">'+p.gA+' - '+p.gB+' <span style="font-size:14px;color:var(--text2)">pronóstico</span></div>';
   }
+  const over2 = p.gA + p.gB >= 3;
   h+='<div class="odds-row">';
   h+='<div class="odds-box team1"><div class="cuota">'+cuota(p.pA)+'</div><div class="prob">1 · '+p.pA+'%</div></div>';
   h+='<div class="odds-box draw"><div class="cuota">'+cuota(p.pX)+'</div><div class="prob">X · '+p.pX+'%</div></div>';
   h+='<div class="odds-box team2"><div class="cuota">'+cuota(p.pB)+'</div><div class="prob">2 · '+p.pB+'%</div></div>';
   h+='</div>';
-  h+='<div style="font-size:11px;color:var(--text2);text-align:center;margin:4px 0">Cuota = (100 / Probabilidad). Margen ajustado.</div>';
+  const mrg=6, tot=mrg+100;
+  h+='<div style="font-size:11px;color:var(--text2);text-align:center;margin:4px 0">Cuota decimal · Margen ' + mrg + '% (' + tot + '% total) · Fines educativos</div>';
+  h+='<div style="display:flex;gap:8px;justify-content:center;margin:6px 0">';
+  h+='<span style="font-size:11px;background:var(--surface2);padding:3px 10px;border-radius:6px">'+(over2?'⚽ Over 2.5':'🥅 Under 2.5')+'</span>';
+  h+='<span style="font-size:11px;background:var(--surface2);padding:3px 10px;border-radius:6px">⚡ DC '+(p.pA>p.pB?'1X':p.pB>p.pA?'2X':'12')+'</span>';
+  h+='</div>';
   h+='<table class="stats-table"><tr><th>Métrica</th><th colspan="2">'+m.team1+'</th><th colspan="2">'+m.team2+'</th></tr>';
   h+='<tr><td class="left">Rating FIFA</td><td colspan="2">'+(FIFA[m.team1]||'-')+'</td><td colspan="2">'+(FIFA[m.team2]||'-')+'</td></tr>';
   h+='<tr><td class="left">Fuerza</td><td colspan="2">'+p.strA+'</td><td colspan="2">'+p.strB+'</td></tr>';
@@ -300,11 +313,12 @@ function renderPredictions(){
       html+='<div style="font-size:9px;color:var(--text2)">'+colT+'</div>';
       html+='<div class="pred-bar"><span style="width:'+p.pA+'%;background:var(--accent)"></span><span style="width:'+p.pX+'%;background:var(--orange)"></span><span style="width:'+p.pB+'%;background:var(--accent2)"></span></div>';
       html+='<div style="font-size:10px;color:var(--green);font-weight:700">⬆ '+win+' ('+conf+'%)</div>';
-      html+='<div class="odds-row" style="gap:4px;margin:2px 0 0">';
-      html+='<span style="font-size:10px;background:rgba(56,189,248,0.15);padding:1px 6px;border-radius:4px">'+cuota(p.pA)+'</span>';
-      html+='<span style="font-size:10px;background:rgba(245,158,11,0.15);padding:1px 6px;border-radius:4px">'+cuota(p.pX)+'</span>';
-      html+='<span style="font-size:10px;background:rgba(129,140,248,0.15);padding:1px 6px;border-radius:4px">'+cuota(p.pB)+'</span>';
+      html+='<div class="odds-row" style="gap:4px;margin:2px 0">';
+      html+='<span style="font-size:10px;background:rgba(56,189,248,0.15);padding:1px 6px;border-radius:4px;font-weight:700">'+cuota(p.pA)+'</span>';
+      html+='<span style="font-size:10px;background:rgba(245,158,11,0.15);padding:1px 6px;border-radius:4px;font-weight:700">'+cuota(p.pX)+'</span>';
+      html+='<span style="font-size:10px;background:rgba(129,140,248,0.15);padding:1px 6px;border-radius:4px;font-weight:700">'+cuota(p.pB)+'</span>';
       html+='</div>';
+      html+='<div style="font-size:8px;color:var(--text2)">Margen 6%</div>';
       html+='</div>';
       html+='<div style="text-align:left;font-size:11px"><img class="flag-img" src="'+m.flag2+'" alt="" style="margin-right:4px"><span>'+m.team2+'</span></div>';
       html+='<div style="display:flex;flex-direction:column;align-items:center;gap:1px;font-size:9px">';
