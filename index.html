@@ -93,25 +93,24 @@ header p{color:var(--text2);font-size:13px;margin-top:2px}
 const API = 'https://wcup2026.org/api/data.php';
 let allMatches = [], standings = {}, activeTab = 'matches', filterGroup = '';
 const userResults = JSON.parse(localStorage.getItem('wc_results') || '{}');
-const COL_OFFSET = -5; // Colombia UTC-5
+function toColMs(t){ return (t*1000) - 18000000; } // UTC-5 fijo (Colombia)
 
-function colDateStr(utcTs){
-  const d = new Date(utcTs * 1000);
-  const local = new Date(d.getTime() + (d.getTimezoneOffset() + COL_OFFSET * 60) * 60000);
-  const y = local.getFullYear();
-  const m = String(local.getMonth() + 1).padStart(2, '0');
-  const day = String(local.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
+function colDateStr(t){
+  const d = new Date(toColMs(t));
+  return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0');
 }
 
-function colTimeStr(utcTs){
-  const d = new Date(utcTs * 1000);
-  return d.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Bogota' });
+function colTimeStr(t){
+  const d = new Date(toColMs(t));
+  const h = d.getUTCHours(), m = d.getUTCMinutes();
+  const ampm = h < 12 ? 'AM' : 'PM';
+  const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return h12+':'+String(m).padStart(2,'0')+' '+ampm;
 }
 
 function colToday(){
-  const d = new Date();
-  return d.toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }); // en-CA gives YYYY-MM-DD
+  const d = new Date(Date.now() - 18000000);
+  return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0');
 }
 
 async function loadData(){
