@@ -166,9 +166,13 @@ function predict(m){
   const pA = Math.round(Math.max(5, Math.min(85, (rawA * (1 - drawFactor)) * 100)));
   const pB = Math.round(Math.max(5, Math.min(85, (rawB * (1 - drawFactor)) * 100)));
   const pX = Math.max(3, 100 - pA - pB);
-  const avgG = 2.4;
-  const gA = Math.max(0, Math.round((strengthA / total) * avgG * (1 + (rawA - 0.5) * 0.6) * 2));
-  const gB = Math.max(0, Math.round((strengthB / total) * avgG * (1 + (rawB - 0.5) * 0.6) * 2));
+  const avgG = 2.7;
+  const diff = rawA - rawB;
+  const modA = 1 + diff * 0.5;
+  const modB = 1 - diff * 0.5;
+  let gA = Math.max(0, Math.round(avgG * rawA * modA));
+  let gB = Math.max(0, Math.round(avgG * rawB * modB));
+  if(gA === 0 && gB === 0){ gA = 1; }
   return { pA, pX, pB, gA, gB };
 }
 
