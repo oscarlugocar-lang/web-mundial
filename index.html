@@ -99,6 +99,7 @@ header p{color:var(--text2);font-size:13px;margin-top:2px}
 <div class="tabs">
   <button class="active" onclick="switchTab('matches')">⚽ Partidos</button>
   <button onclick="switchTab('predictions')">🔮 Pronósticos</button>
+  <button onclick="switchTab('bracket')">🏆 Eliminatorias</button>
   <button onclick="switchTab('standings')">🏆 Tabla</button>
   <button onclick="switchTab('stats')">📊 Stats Equipos</button>
 </div>
@@ -175,11 +176,12 @@ function cuota(p, margin){
   return book>0?(100/book).toFixed(2):'-';
 }
 
-function render(){if(activeTab==='matches')renderMatches();else if(activeTab==='predictions')renderPredictions();else if(activeTab==='standings')renderStandings();else renderTeamStats();}
+function render(){if(activeTab==='matches')renderMatches();else if(activeTab==='predictions')renderPredictions();else if(activeTab==='bracket')renderBracket();else if(activeTab==='standings')renderStandings();else renderTeamStats();}
 
 function switchTab(tab){
   activeTab=tab;
-  document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.textContent.includes(tab==='matches'?'Partidos':tab==='predictions'?'Pronósticos':tab==='standings'?'Tabla':'Stats')));
+  const labels={matches:'Partidos',predictions:'Pronósticos',bracket:'Eliminatorias',standings:'Tabla',stats:'Stats'};
+  document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b.textContent.includes(labels[tab])));
   render();
 }
 
@@ -239,12 +241,24 @@ function openModal(id){
 }
 function closeModal(){document.getElementById('modalOverlay').classList.remove('show');}
 
+function badgeLabel(m){
+  if(m.group)return m.group.replace('Group ','');
+  const r=m.round;
+  if(r==='Round of 32')return '32vos';
+  if(r==='Round of 16')return '8vos';
+  if(r==='Quarter-final')return 'CF';
+  if(r==='Semi-final')return 'SF';
+  if(r==='Match for third place')return '3°';
+  if(r==='Final')return 'F';
+  return r;
+}
+
 function renderMatches(){
   renderFilters();
   const today=ctd(),byDate={};
   allMatches.forEach(m=>{
     if(filterGroup&&m.group!==filterGroup)return;
-    if(!filterGroup&&!m.group.startsWith('Group'))return;
+    if(!filterGroup&&!m.group&&!m.datetime)return;
     if(!m.datetime)return;
     const d=cds(m.datetime);
     if(!byDate[d])byDate[d]=[];
@@ -265,8 +279,10 @@ function renderMatches(){
       else{sd=p.gA+' - '+p.gB;}
       let s1='',sX='',s2='';
       if(ur===m.team1)s1='sel1';else if(ur==='X')sX='selX';else if(ur===m.team2)s2='sel2';
+      const badge=badgeLabel(m);
+      const isKnockout=!m.group;
       html+='<div class="match-card'+(live?' live':'')+'" onclick="openModal('+m.id+')">';
-      html+='<span class="group-badge">'+m.group.replace('Group ','')+'</span>';
+      html+='<span class="group-badge" style="background:'+(isKnockout?'var(--gold)':'var(--accent)')+(isKnockout?';color:#000':'')+'">'+badge+'</span>';
       html+='<div class="team'+(fin&&m.score&&m.score[0]>m.score[1]?' win':'')+'" style="text-align:right"><span class="team-name" style="justify-content:flex-end"><span>'+m.team1+'</span><img class="flag-img" src="'+m.flag1+'" alt=""></span></div>';
       html+='<div class="score-area">';
       if(live){html+='<div class="score live-score">'+sd+'</div><span class="status-badge live">🔴 '+(m.live_minute||'')+'\'</span>';}
@@ -291,7 +307,7 @@ function renderMatches(){
 }
 
 function renderPredictions(){
-  const up=allMatches.filter(m=>(m.status==='scheduled'||m.status==='upcoming')&&m.group.startsWith('Group')&&m.datetime);
+  const up=allMatches.filter(m=>(m.status==='scheduled'||m.status==='upcoming')&&m.datetime);
   const byDate={};
   up.forEach(m=>{const d=cds(m.datetime);if(!byDate[d])byDate[d]=[];byDate[d].push(m);});
   const dates=Object.keys(byDate).sort();
@@ -375,6 +391,49 @@ function renderTeamStats(){
       html+='<div class="stat-row"><span class="label">Prom. gol recibido</span><span class="value">'+def+'</span></div>';
       html+='<div class="stat-row"><span class="label">xG por partido</span><span class="value">'+xgPer+'</span></div>';
       html+='<div class="stat-row"><span class="label">Forma (últ. 5)</span><span class="value">'+(form.length?form.map(x=>'<span class="form-badge '+x+'">'+x+'</span>').join(''):'—')+'</span></div>';
+      html+='</div>';
+    });
+  });
+  html+='</div>';
+  document.getElementById('tabContent').innerHTML=html;
+}
+
+function renderBracket(){
+  const ROUNDS=['Round of 32','Round of 16','Quarter-final','Semi-final','Match for third place','Final'];
+  const ROUND_ICONS={};
+  const knocked=allMatches.filter(m=>!m.group&&m.round).sort((a,b)=>a.datetime-b.datetime);
+  const byRound={};
+  knocked.forEach(m=>{if(!byRound[m.round])byRound[m.round]=[];byRound[m.round].push(m);});
+  let html='<h2 style="font-size:16px;font-weight:700;margin:4px 0 10px;text-align:center;color:var(--gold)">🏆 Eliminatorias</h2>';
+  html+='<div style="text-align:center;font-size:11px;color:var(--text2);margin-bottom:4px">Haz clic en cada partido para ver el análisis completo</div>';
+  html+='<div class="match-list">';
+  ROUNDS.forEach(round=>{
+    const ms=byRound[round];
+    if(!ms||!ms.length)return;
+    const icon=round==='Round of 32'?'🔵':round==='Round of 16'?'🟢':round==='Quarter-final'?'🟡':round==='Semi-final'?'🟠':round==='Match for third place'?'🥉':'🏆';
+    const allFin=ms.every(m=>m.status==='finished');
+    const color=allFin?'var(--text2)':'var(--gold)';
+    html+='<div class="date-header" style="color:'+color+'"><span>'+icon+' '+round+'</span><span>'+ms.length+' partidos'+(allFin?' ✅':'')+'</span></div>';
+    ms.forEach(m=>{
+      const p=predict(m);
+      const live=m.status==='live',fin=m.status==='finished';
+      let sd='';
+      if(live){sd=(m.score?m.score[0]:'?')+' - '+(m.score?m.score[1]:'?');}
+      else if(fin&&m.score){sd=m.score[0]+' - '+m.score[1];}
+      else{sd=p.gA+' - '+p.gB;}
+      html+='<div class="match-card'+(live?' live':'')+'" onclick="openModal('+m.id+')">';
+      html+='<span class="group-badge" style="background:var(--gold);color:#000">'+(round==='Match for third place'?'3°':'F')+'</span>';
+      html+='<div class="team'+(fin&&m.score&&m.score[0]>m.score[1]?' win':'')+'" style="text-align:right"><span class="team-name" style="justify-content:flex-end"><span>'+m.team1+'</span><img class="flag-img" src="'+m.flag1+'" alt=""></span></div>';
+      html+='<div class="score-area">';
+      if(live){html+='<div class="score live-score">'+sd+'</div><span class="status-badge live">🔴 '+(m.live_minute||'')+'\'</span>';}
+      else if(fin){html+='<div class="score" style="font-weight:900;font-size:18px">'+sd+'</div><span class="status-badge finished">'+cts(m.datetime)+'</span>';}
+      else{
+        html+='<div class="score" style="color:var(--gold);font-size:18px">'+sd+'</div>';
+        html+='<div style="font-size:9px;color:var(--text2)">'+cts(m.datetime)+' · pronóstico</div>';
+        html+='<div class="pred-bar"><span style="width:'+p.pA+'%;background:var(--accent)"></span><span style="width:'+p.pX+'%;background:var(--orange)"></span><span style="width:'+p.pB+'%;background:var(--accent2)"></span></div>';
+      }
+      html+='</div>';
+      html+='<div class="team'+(fin&&m.score&&m.score[1]>m.score[0]?' win':'')+'" style="text-align:left"><span class="team-name"><img class="flag-img" src="'+m.flag2+'" alt=""><span>'+m.team2+'</span></span></div>';
       html+='</div>';
     });
   });
